@@ -4,93 +4,32 @@
     <meta charset="UTF-8">
     <title>Монитор Экстренных Бедствий</title>
     <style>
-        body {
-            font-family: sans-serif;
-            background-color: #121212;
-            color: #ffffff;
-            margin: 0;
-            padding: 20px;
-            text-align: center;
-        }
-        .container {
-            max-width: 500px;
-            margin: 0 auto;
-            background-color: #1e1e1e;
-            padding: 20px;
-            border-radius: 12px;
-            border: 1px solid #333;
-        }
-        h1 {
-            color: #ff3b30;
-            font-size: 22px;
-            margin-bottom: 5px;
-        }
-        .subtitle {
-            color: #888;
-            font-size: 12px;
-            margin-bottom: 20px;
-        }
-        .status-box {
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 15px;
-            font-weight: bold;
-            font-size: 18px;
-        }
-        .danger {
-            background-color: #7a1d1d;
-            border: 2px solid #ff3b30;
-            color: #ffcccc;
-            animation: pulse 1.5s infinite;
-        }
-        .safe {
-            background-color: #1d7a34;
-            border: 2px solid #34c759;
-            color: #ccffdd;
-        }
-        #liveData {
-            background: #2a2a2a;
-            padding: 15px;
-            border-radius: 8px;
-            text-align: left;
-            font-size: 14px;
-            line-height: 1.6;
-            border: 1px solid #444;
-            min-height: 100px;
-        }
-        button {
-            width: 100%;
-            padding: 12px;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            font-size: 15px;
-            font-weight: bold;
-            cursor: pointer;
-            margin-top: 10px;
-        }
+        body { font-family: sans-serif; background-color: #121212; color: #ffffff; margin: 0; padding: 20px; text-align: center; }
+        .container { max-width: 500px; margin: 0 auto; background-color: #1e1e1e; padding: 20px; border-radius: 12px; border: 1px solid #333; }
+        h1 { color: #ff3b30; font-size: 22px; margin-bottom: 5px; }
+        .subtitle { color: #888; font-size: 12px; margin-bottom: 20px; }
+        .status-box { padding: 15px; border-radius: 8px; margin-bottom: 15px; font-weight: bold; font-size: 18px; }
+        .danger { background-color: #7a1d1d; border: 2px solid #ff3b30; color: #ffcccc; }
+        .safe { background-color: #1d7a34; border: 2px solid #34c759; color: #ccffdd; }
+        #liveData { background: #2a2a2a; padding: 15px; border-radius: 8px; text-align: left; font-size: 14px; line-height: 1.6; border: 1px solid #444; min-height: 100px; }
+        button { width: 100%; padding: 12px; color: white; border: none; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; margin-top: 10px; }
         .blue-btn { background-color: #007aff; }
         .red-btn { background-color: #ff3b30; }
-        @keyframes pulse {
-            0% { opacity: 1; }
-            50% { opacity: 0.8; }
-            100% { opacity: 1; }
-        }
     </style>
 </head>
 <body>
 
 <div class="container">
     <h1>🚨 МОНИТОР ОПАСНОСТЕЙ ЧС</h1>
-    <div class="subtitle">Автономный прием данных со спутников мониторинга</div>
+    <div class="subtitle">Автономный прием данных мониторинга</div>
     
     <div id="mainStatus" class="status-box safe">
         Синхронизация со спутником...
     </div>
 
-    <div id="liveData">Подключение к метео-серверу...</div>
+    <div id="liveData">Подключение к запасному метео-серверу...</div>
 
-    <button class="blue-btn" onclick="getSatelliteData()">Обновить данные спутника</button>
+    <button class="blue-btn" onclick="getSatelliteData()">Обновить данные</button>
     <button class="red-btn" onclick="toggleTestAlert()">🚨 Проверить режим тревоги (Тест)</button>
 </div>
 
@@ -105,32 +44,29 @@
         var statusBox = document.getElementById('mainStatus');
         var dataBox = document.getElementById('liveData');
         
-        statusBox.className = "status-box safe";
-        statusBox.innerHTML = "Обновление...";
-
         try {
-            // Координаты зафиксированы жестко — браузер больше ничего не заблокирует!
-            var lat = "55.7887"; 
-            var lon = "49.1221"; 
-
-            var url = "https://open-meteo.com" + lat + "&longitude=" + lon + "&current=temperature_2m,weather_code,wind_speed_10m&timezone=auto";
+            // Используем резервный международный сервер погоды, который не заблокирован в РФ
+            var url = "https://wttr.in";
             
             var response = await fetch(url);
             var data = await response.json();
             
-            var temp = data.current.temperature_2m;
-            var wind = data.current.wind_speed_10m; 
-            var code = data.current.weather_code;   
+            // Вытаскиваем текущие данные
+            var current = data.current_condition[0];
+            var temp = current.temp_C;
+            var wind = current.windspeedKmph; 
+            var weatherDesc = current.lang_ru ? current.lang_ru[0].value : current.value;
 
             var report = "<b>📍 Локация мониторинга: РТ, Казань</b><br>";
             report += "• Текущая температура: " + temp + "°C<br>";
             report += "• Скорость ветра: " + wind + " км/ч<br>";
+            report += "• Состояние: " + weatherDesc + "<br>";
 
-            if (code >= 95 || wind > 60) {
+            // Если ветер критический
+            if (parseInt(wind) > 60) {
                 statusBox.className = "status-box danger";
                 statusBox.innerHTML = "⚠️ ЭКСТРЕННОЕ ПРЕДУПРЕЖДЕНИЕ ЧС!";
-                report += "<br><span style='color: #ff4444; font-weight: bold;'>⚠️ ОБНАРУЖЕНО БЕДСТВИЕ: Сильный шторм или крупный град!</span>";
-                siren.play().catch(function(e) { console.log("Ждем клика"); });
+                report += "<br><span style='color: #ff4444; font-weight: bold;'>⚠️ ОБНАРУЖЕНО БЕДСТВИЕ: Штормовой ураган!</span>";
             } else {
                 statusBox.className = "status-box safe";
                 statusBox.innerHTML = "🟢 Опасных угроз не зафиксировано";
@@ -143,8 +79,8 @@
 
         } catch (error) {
             statusBox.className = "status-box danger";
-            statusBox.innerHTML = "❌ ОШИБКА ПОДКЛЮЧЕНИЯ";
-            dataBox.innerHTML = "Не удалось связаться со спутником. Проверь интернет-соединение.";
+            statusBox.innerHTML = "❌ ОШИБКА РЕЗЕРВНОГО СЕРВЕРА";
+            dataBox.innerHTML = "Все доступные метео-серверы заблокированы сетью. Автономный режим недоступен.";
         }
     }
 
@@ -157,7 +93,7 @@
             statusBox.className = "status-box danger";
             statusBox.innerHTML = "⚠️ ТЕСТ: ОБНАРУЖЕНА УГРОЗА ЧС!";
             dataBox.innerHTML = "<b>[ТЕСТОВЫЙ РЕЖИМ СИСТЕМЫ]</b><br><span style='color: #ff4444; font-weight: bold;'>Внимание! Запущена проверка сирен гражданской обороны. Моделирование ракетной опасности и ураганного ветра. Проследуйте в безопасные зоны!</span>";
-            siren.play().catch(function(e) { console.log("Звук сирены включен!"); });
+            siren.play().catch(function(e) { console.log("Звук включен"); });
         } else {
             isTestAlertActive = false;
             siren.pause();
@@ -166,7 +102,6 @@
         }
     }
 
-    setInterval(getSatelliteData, 20000);
     getSatelliteData();
 </script>
 
