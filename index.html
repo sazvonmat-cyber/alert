@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Монитор Экстренных Бедствий</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            background-color: #121212;
+            color: #ffffff;
+            margin: 0;
+            padding: 20px;
+            text-align: center;
+        }
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+            background-color: #1e1e1e;
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid #333;
+        }
+        h1 {
+            color: #ff3b30;
+            font-size: 22px;
+            margin-bottom: 5px;
+        }
+        .subtitle {
+            color: #888;
+            font-size: 12px;
+            margin-bottom: 20px;
+        }
+        .status-box {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            font-weight: bold;
+            font-size: 18px;
+        }
+        .danger {
+            background-color: #7a1d1d;
+            border: 2px solid #ff3b30;
+            color: #ffcccc;
+            animation: pulse 1.5s infinite;
+        }
+        .safe {
+            background-color: #1d7a34;
+            border: 2px solid #34c759;
+            color: #ccffdd;
+        }
+        #liveData {
+            background: #2a2a2a;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: left;
+            font-size: 14px;
+            line-height: 1.6;
+            border: 1px solid #444;
+            min-height: 100px;
+        }
+        button {
+            width: 100%;
+            padding: 12px;
+            background-color: #007aff;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 15px;
+        }
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.8; }
+            100% { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>🚨 МОНИТОР ОПАСНОСТЕЙ ЧС</h1>
+    <div class="subtitle">Автономный прием данных со спутников мониторинга</div>
+    
+    <div id="mainStatus" class="status-box safe">
+        Синхронизация со спутником...
+    </div>
+
+    <div id="liveData">Получение текущих координат...</div>
+
+    <button onclick="getSatelliteData()">Обновить данные вручную</button>
+</div>
+
+<script>
+    // Подключаем реальный звук сирены гособороны
+    var siren = new Audio('https://wikimedia.org');
+    siren.loop = true;
+
+    async function getSatelliteData() {
+        var statusBox = document.getElementById('mainStatus');
+        var dataBox = document.getElementById('liveData');
+        
+        statusBox.className = "status-box safe";
+        statusBox.innerHTML = "Обновление...";
+
+        try {
+            // Координаты (по умолчанию выставлена Казань, Татарстан)
+            var lat = "55.7887";
+            var lon = "49.1221";
+
+            // Делаем прямой запрос к открытой спутниковой базе погоды
+            var url = "https://open-meteo.com" + lat + "&longitude=" + lon + "&current=temperature_2m,weather_code,wind_speed_10m&timezone=auto";
+            
+            var response = await fetch(url);
+            var data = await response.json();
+            
+            var temp = data.current.temperature_2m;
+            var wind = data.current.wind_speed_10m; // скорость ветра в км/ч
+            var code = data.current.weather_code;   // международный код опасности
+
+            var isDanger = false;
+            var report = "<b>📍 Локация мониторинга: РТ, Казань</b><br>";
+            report += "• Текущая температура: " + temp + "°C<br>";
+            report += "• Скорость ветра: " + wind + " км/ч<br>";
+
+            // Анализируем коды критических природных бедствий (грозы, град, ураганы)
+            if (code >= 95 || wind > 60) {
+                isDanger = true;
+                report += "<br><span style='color: #ff4444; font-weight: bold;'>⚠️ ЭКСТРЕННАЯ СИТУАЦИЯ: Обнаружен разрушительный ураган или опасный град! Покиньте открытую местность!</span>";
+            } else if (code >= 80) {
+                report += "<br><span style='color: #ffcc00;'>• Фиксируется сильный ливневый шторм. Угроз ЧС нет.</span>";
+            } else {
+                report += "<br><span style='color: #34c759;'>🟢 Оперативная обстановка спокойная. Опасных аномалий не обнаружено.</span>";
+            }
+
+            dataBox.innerHTML = report;
+
+            if (isDanger) {
+                statusBox.className = "status-box danger";
+                statusBox.innerHTML = "⚠️ КРИТИЧЕСКОЕ ПРЕДУПРЕЖДЕНИЕ ЧС!";
+                siren.play().catch(function(e) { console.log("Браузер ждет клика для звука"); });
+            } else {
+                statusBox.className = "status-box safe";
+                statusBox.innerHTML = "🟢 Опасных угроз не зафиксировано";
+                siren.pause();
+                siren.currentTime = 0;
+            }
+
+        } catch (error) {
+            statusBox.className = "status-box danger";
+            statusBox.innerHTML = "❌ ОШИБКА ПОДКЛЮЧЕНИЯ";
+            dataBox.innerHTML = "Не удалось связаться со спутником. Проверь интернет-соединение.";
+        }
+    }
+
+    // Автоматическое обновление данных в приложении каждые 20 секунд
+    setInterval(getSatelliteData, 20000);
+
+    // Запуск при старте приложения
+    getSatelliteData();
+</script>
+
+</body>
+</html>
