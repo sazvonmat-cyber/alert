@@ -88,20 +88,19 @@
         Синхронизация со спутником...
     </div>
 
-    <div id="liveData">Получение текущих координат...</div>
+    <div id="liveData">Подключение к метео-серверу...</div>
 
     <button class="blue-btn" onclick="getSatelliteData()">Обновить данные спутника</button>
     <button class="red-btn" onclick="toggleTestAlert()">🚨 Проверить режим тревоги (Тест)</button>
 </div>
 
 <script>
-    // Настоящий звук сирены гражданской обороны
     var siren = new Audio('https://wikimedia.org');
     siren.loop = true;
     var isTestAlertActive = false;
 
     async function getSatelliteData() {
-        if (isTestAlertActive) return; // Если включен тест тревоги, погоду не обновляем
+        if (isTestAlertActive) return; 
 
         var statusBox = document.getElementById('mainStatus');
         var dataBox = document.getElementById('liveData');
@@ -110,10 +109,10 @@
         statusBox.innerHTML = "Обновление...";
 
         try {
-            var lat = "55.7887";
-            var lon = "49.1221";
+            // Координаты зафиксированы жестко — браузер больше ничего не заблокирует!
+            var lat = "55.7887"; 
+            var lon = "49.1221"; 
 
-            // Исправленная защищенная ссылка https://
             var url = "https://open-meteo.com" + lat + "&longitude=" + lon + "&current=temperature_2m,weather_code,wind_speed_10m&timezone=auto";
             
             var response = await fetch(url);
@@ -158,7 +157,7 @@
             statusBox.className = "status-box danger";
             statusBox.innerHTML = "⚠️ ТЕСТ: ОБНАРУЖЕНА УГРОЗА ЧС!";
             dataBox.innerHTML = "<b>[ТЕСТОВЫЙ РЕЖИМ СИСТЕМЫ]</b><br><span style='color: #ff4444; font-weight: bold;'>Внимание! Запущена проверка сирен гражданской обороны. Моделирование ракетной опасности и ураганного ветра. Проследуйте в безопасные зоны!</span>";
-            siren.play().catch(function(e) { alert("Звук сирены включен! Кликните по экрану."); });
+            siren.play().catch(function(e) { console.log("Звук сирены включен!"); });
         } else {
             isTestAlertActive = false;
             siren.pause();
@@ -167,7 +166,6 @@
         }
     }
 
-    // Авто-обновление каждые 20 секунд
     setInterval(getSatelliteData, 20000);
     getSatelliteData();
 </script>
