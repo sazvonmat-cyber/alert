@@ -61,15 +61,16 @@
         button {
             width: 100%;
             padding: 12px;
-            background-color: #007aff;
             color: white;
             border: none;
             border-radius: 8px;
-            font-size: 16px;
+            font-size: 15px;
             font-weight: bold;
             cursor: pointer;
-            margin-top: 15px;
+            margin-top: 10px;
         }
+        .blue-btn { background-color: #007aff; }
+        .red-btn { background-color: #ff3b30; }
         @keyframes pulse {
             0% { opacity: 1; }
             50% { opacity: 0.8; }
@@ -89,15 +90,19 @@
 
     <div id="liveData">Получение текущих координат...</div>
 
-    <button onclick="getSatelliteData()">Обновить данные вручную</button>
+    <button class="blue-btn" onclick="getSatelliteData()">Обновить данные спутника</button>
+    <button class="red-btn" onclick="toggleTestAlert()">🚨 Проверить режим тревоги (Тест)</button>
 </div>
 
 <script>
-    // Подключаем реальный звук сирены гособороны
+    // Настоящий звук сирены гражданской обороны
     var siren = new Audio('https://wikimedia.org');
     siren.loop = true;
+    var isTestAlertActive = false;
 
     async function getSatelliteData() {
+        if (isTestAlertActive) return; // Если включен тест тревоги, погоду не обновляем
+
         var statusBox = document.getElementById('mainStatus');
         var dataBox = document.getElementById('liveData');
         
@@ -105,47 +110,37 @@
         statusBox.innerHTML = "Обновление...";
 
         try {
-            // Координаты (по умолчанию выставлена Казань, Татарстан)
             var lat = "55.7887";
             var lon = "49.1221";
 
-            // Делаем прямой запрос к открытой спутниковой базе погоды
+            // Исправленная защищенная ссылка https://
             var url = "https://open-meteo.com" + lat + "&longitude=" + lon + "&current=temperature_2m,weather_code,wind_speed_10m&timezone=auto";
             
             var response = await fetch(url);
             var data = await response.json();
             
             var temp = data.current.temperature_2m;
-            var wind = data.current.wind_speed_10m; // скорость ветра в км/ч
-            var code = data.current.weather_code;   // международный код опасности
+            var wind = data.current.wind_speed_10m; 
+            var code = data.current.weather_code;   
 
-            var isDanger = false;
             var report = "<b>📍 Локация мониторинга: РТ, Казань</b><br>";
             report += "• Текущая температура: " + temp + "°C<br>";
             report += "• Скорость ветра: " + wind + " км/ч<br>";
 
-            // Анализируем коды критических природных бедствий (грозы, град, ураганы)
             if (code >= 95 || wind > 60) {
-                isDanger = true;
-                report += "<br><span style='color: #ff4444; font-weight: bold;'>⚠️ ЭКСТРЕННАЯ СИТУАЦИЯ: Обнаружен разрушительный ураган или опасный град! Покиньте открытую местность!</span>";
-            } else if (code >= 80) {
-                report += "<br><span style='color: #ffcc00;'>• Фиксируется сильный ливневый шторм. Угроз ЧС нет.</span>";
-            } else {
-                report += "<br><span style='color: #34c759;'>🟢 Оперативная обстановка спокойная. Опасных аномалий не обнаружено.</span>";
-            }
-
-            dataBox.innerHTML = report;
-
-            if (isDanger) {
                 statusBox.className = "status-box danger";
-                statusBox.innerHTML = "⚠️ КРИТИЧЕСКОЕ ПРЕДУПРЕЖДЕНИЕ ЧС!";
-                siren.play().catch(function(e) { console.log("Браузер ждет клика для звука"); });
+                statusBox.innerHTML = "⚠️ ЭКСТРЕННОЕ ПРЕДУПРЕЖДЕНИЕ ЧС!";
+                report += "<br><span style='color: #ff4444; font-weight: bold;'>⚠️ ОБНАРУЖЕНО БЕДСТВИЕ: Сильный шторм или крупный град!</span>";
+                siren.play().catch(function(e) { console.log("Ждем клика"); });
             } else {
                 statusBox.className = "status-box safe";
                 statusBox.innerHTML = "🟢 Опасных угроз не зафиксировано";
+                report += "<br><span style='color: #34c759;'>🟢 Оперативная обстановка спокойная. Опасных аномалий не обнаружено.</span>";
                 siren.pause();
                 siren.currentTime = 0;
             }
+
+            dataBox.innerHTML = report;
 
         } catch (error) {
             statusBox.className = "status-box danger";
@@ -154,10 +149,26 @@
         }
     }
 
-    // Автоматическое обновление данных в приложении каждые 20 секунд
-    setInterval(getSatelliteData, 20000);
+    function toggleTestAlert() {
+        var statusBox = document.getElementById('mainStatus');
+        var dataBox = document.getElementById('liveData');
 
-    // Запуск при старте приложения
+        if (!isTestAlertActive) {
+            isTestAlertActive = true;
+            statusBox.className = "status-box danger";
+            statusBox.innerHTML = "⚠️ ТЕСТ: ОБНАРУЖЕНА УГРОЗА ЧС!";
+            dataBox.innerHTML = "<b>[ТЕСТОВЫЙ РЕЖИМ СИСТЕМЫ]</b><br><span style='color: #ff4444; font-weight: bold;'>Внимание! Запущена проверка сирен гражданской обороны. Моделирование ракетной опасности и ураганного ветра. Проследуйте в безопасные зоны!</span>";
+            siren.play().catch(function(e) { alert("Звук сирены включен! Кликните по экрану."); });
+        } else {
+            isTestAlertActive = false;
+            siren.pause();
+            siren.currentTime = 0;
+            getSatelliteData();
+        }
+    }
+
+    // Авто-обновление каждые 20 секунд
+    setInterval(getSatelliteData, 20000);
     getSatelliteData();
 </script>
 
